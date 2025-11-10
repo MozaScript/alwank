@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ألوانك</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        #canvas {
+            border: 2px solid #333;
+            width: 400px;
+            height: 400px;
+            background-color: #fff;
+        }
+        .controls {
+            margin-top: 20px;
+        }
+        input[type="color"], select, button {
+            margin: 5px;
+            padding: 5px 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>ألوانك</h1>
+    <canvas id="canvas"></canvas>
+
+    <div class="controls">
+        <label>اختر اللون: <input type="color" id="colorPicker" value="#ff0000"></label>
+        <label>الشكل: 
+            <select id="shapePicker">
+                <option value="circle">دائرة</option>
+                <option value="square">مربع</option>
+                <option value="triangle">مثلث</option>
+            </select>
+        </label>
+        <button id="drawBtn">ارسم الشكل</button>
+        <button id="clearBtn">امسح كل شيء</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const colorPicker = document.getElementById('colorPicker');
+        const shapePicker = document.getElementById('shapePicker');
+        const drawBtn = document.getElementById('drawBtn');
+        const clearBtn = document.getElementById('clearBtn');
+
+        function drawShape() {
+            const color = colorPicker.value;
+            const shape = shapePicker.value;
+            const x = Math.random() * 350 + 25;
+            const y = Math.random() * 350 + 25;
+            const size = Math.random() * 50 + 20;
+
+            ctx.fillStyle = color;
+
+            if (shape === 'circle') {
+                ctx.beginPath();
+                ctx.arc(x, y, size/2, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (shape === 'square') {
+                ctx.fillRect(x - size/2, y - size/2, size, size);
+            } else if (shape === 'triangle') {
+                ctx.beginPath();
+                ctx.moveTo(x, y - size/2);
+                ctx.lineTo(x - size/2, y + size/2);
+                ctx.lineTo(x + size/2, y + size/2);
+                ctx.closePath();
+                ctx.fill();
+            }
+        }
+
+        drawBtn.addEventListener('click', drawShape);
+        clearBtn.addEventListener('click', () => ctx.clearRect(0, 0, canvas.width, canvas.height));
+    </script>
+
+</body>
+</html>
