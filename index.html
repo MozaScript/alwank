@@ -65,8 +65,6 @@ h1 {
     <button id="redoBtn">Redo</button>
     <button id="clearBtn">امسح كل شيء</button>
     <button id="saveBtn">حفظ PNG</button>
-    <button id="zoomIn">+</button>
-    <button id="zoomOut">-</button>
 </div>
 
 <div id="canvasContainer">
@@ -85,13 +83,9 @@ const undoBtn = document.getElementById('undoBtn');
 const redoBtn = document.getElementById('redoBtn');
 const clearBtn = document.getElementById('clearBtn');
 const saveBtn = document.getElementById('saveBtn');
-const zoomIn = document.getElementById('zoomIn');
-const zoomOut = document.getElementById('zoomOut');
 
 canvas.width = 2000;
 canvas.height = 2000;
-
-let scale = 1;
 
 // عناصر الرسم
 let elements = [];
@@ -102,8 +96,6 @@ let startX = 0, startY = 0;
 
 function drawAll() {
     ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.save();
-    ctx.scale(scale,scale);
     elements.forEach(el => {
         ctx.lineWidth = el.size;
         ctx.strokeStyle = el.color;
@@ -137,16 +129,15 @@ function drawAll() {
             ctx.stroke();
         }
     });
-    ctx.restore();
 }
 
 function getCoords(e){
     const rect = canvas.getBoundingClientRect();
     if(e.touches){
         const t = e.touches[0];
-        return [(t.clientX - rect.left)/scale, (t.clientY - rect.top)/scale];
+        return [(t.clientX - rect.left), (t.clientY - rect.top)];
     } else {
-        return [(e.clientX - rect.left)/scale, (e.clientY - rect.top)/scale];
+        return [(e.clientX - rect.left), (e.clientY - rect.top)];
     }
 }
 
@@ -154,7 +145,7 @@ function startDrawing(e){
     [startX,startY] = getCoords(e);
     drawing = true;
     if(toolPicker.value==='brush' || toolPicker.value==='eraser'){
-        elements.push({type:toolPicker.value, color:toolPicker.value==='eraser'?'#fff':colorPicker.value, size:sizePicker.value/scale, points:[{x:startX,y:startY}]});
+        elements.push({type:toolPicker.value, color:toolPicker.value==='eraser'?'#fff':colorPicker.value, size:sizePicker.value, points:[{x:startX,y:startY}]});
         redoElements = [];
     }
 }
@@ -168,17 +159,38 @@ function draw(e){
         drawAll();
     } else {
         drawAll();
-        const temp = {type:toolPicker.value,color:colorPicker.value,size:sizePicker.value/scale,x1:startX,y1:startY,x2:x,y2:y};
-        elements.push(temp);
+        const temp = {type:toolPicker.value,color:colorPicker.value,size:sizePicker.value,x1:startX,y1:startY,x2:x,y2:y};
         drawAll();
-        elements.pop();
+        ctx.lineWidth = temp.size;
+        ctx.strokeStyle = temp.color;
+        ctx.fillStyle = temp.color;
+        if(temp.type==='line'){
+            ctx.beginPath();
+            ctx.moveTo(temp.x1,temp.y1);
+            ctx.lineTo(temp.x2,temp.y2);
+            ctx.stroke();
+        } else if(temp.type==='rect'){
+            ctx.strokeRect(temp.x1,temp.y1,temp.x2-temp.x1,temp.y2-temp.y1);
+        } else if(temp.type==='circle'){
+            ctx.beginPath();
+            const r=Math.sqrt((temp.x2-temp.x1)**2+(temp.y2-temp.y1)**2);
+            ctx.arc(temp.x1,temp.y1,r,0,Math.PI*2);
+            ctx.stroke();
+        } else if(temp.type==='triangle'){
+            ctx.beginPath();
+            ctx.moveTo(temp.x1,temp.y1);
+            ctx.lineTo(temp.x2,temp.y2);
+            ctx.lineTo(temp.x1-(temp.x2-temp.x1),temp.y2);
+            ctx.closePath();
+            ctx.stroke();
+        }
     }
 }
 
 function endDrawing(e){
     if(drawing && !['brush','eraser'].includes(toolPicker.value)){
         const [x,y] = getCoords(e);
-        elements.push({type:toolPicker.value,color:colorPicker.value,size:sizePicker.value/scale,x1:startX,y1:startY,x2:x,y2:y});
+        elements.push({type:toolPicker.value,color:colorPicker.value,size:sizePicker.value,x1:startX,y1:startY,x2:x,y2:y});
         redoElements = [];
         drawAll();
     }
@@ -225,11 +237,6 @@ saveBtn.addEventListener('click',()=>{
     link.click();
 });
 
-// الزوم سلس
-zoomIn.addEventListener('click',()=> { scale*=1.2; drawAll(); });
-zoomOut.addEventListener('click',()=> { scale/=1.2; drawAll(); });
-
 </script>
-
 </body>
 </html>
