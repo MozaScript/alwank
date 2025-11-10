@@ -92,8 +92,6 @@ canvas.width = 2000;
 canvas.height = 2000;
 
 let scale = 1;
-let offsetX = 0;
-let offsetY = 0;
 
 // عناصر الرسم
 let elements = [];
@@ -104,12 +102,15 @@ let startX = 0, startY = 0;
 
 function drawAll() {
     ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.save();
+    ctx.scale(scale,scale);
     elements.forEach(el => {
         ctx.lineWidth = el.size;
         ctx.strokeStyle = el.color;
         ctx.fillStyle = el.color;
         if(el.type === 'brush' || el.type === 'eraser') {
             ctx.beginPath();
+            ctx.lineCap = 'round';
             for(let i=0;i<el.points.length-1;i++){
                 ctx.moveTo(el.points[i].x, el.points[i].y);
                 ctx.lineTo(el.points[i+1].x, el.points[i+1].y);
@@ -136,14 +137,8 @@ function drawAll() {
             ctx.stroke();
         }
     });
+    ctx.restore();
 }
-
-// التعامل مع الزوم
-function render() {
-    canvas.style.transform = `scale(${scale})`;
-    requestAnimationFrame(render);
-}
-render();
 
 function getCoords(e){
     const rect = canvas.getBoundingClientRect();
@@ -230,9 +225,9 @@ saveBtn.addEventListener('click',()=>{
     link.click();
 });
 
-// الزوم
-zoomIn.addEventListener('click',()=> scale*=1.2);
-zoomOut.addEventListener('click',()=> scale/=1.2);
+// الزوم سلس
+zoomIn.addEventListener('click',()=> { scale*=1.2; drawAll(); });
+zoomOut.addEventListener('click',()=> { scale/=1.2; drawAll(); });
 
 </script>
 
