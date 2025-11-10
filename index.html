@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ألوانك</title>
+    <title>ألوانك - رسم حر</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -17,15 +17,16 @@
         }
         #canvas {
             border: 2px solid #333;
-            width: 400px;
+            width: 90%;
+            max-width: 500px;
             height: 400px;
             background-color: #fff;
-            cursor: crosshair;
+            touch-action: none; /* يمنع الصفحة من التحرك أثناء الرسم */
         }
         .controls {
-            margin-top: 20px;
+            margin-top: 15px;
         }
-        input[type="color"], select, button {
+        input[type="color"], input[type="range"], button {
             margin: 5px;
             padding: 5px 10px;
         }
@@ -33,18 +34,12 @@
 </head>
 <body>
 
-    <h1>ألوانك</h1>
+    <h1>ألوانك - رسم حر</h1>
     <canvas id="canvas"></canvas>
 
     <div class="controls">
         <label>اختر اللون: <input type="color" id="colorPicker" value="#ff0000"></label>
-        <label>الشكل: 
-            <select id="shapePicker">
-                <option value="circle">دائرة</option>
-                <option value="square">مربع</option>
-                <option value="triangle">مثلث</option>
-            </select>
-        </label>
+        <label>حجم الفرشاة: <input type="range" id="sizePicker" min="1" max="30" value="5"></label>
         <button id="clearBtn">امسح كل شيء</button>
     </div>
 
@@ -52,42 +47,62 @@
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         const colorPicker = document.getElementById('colorPicker');
-        const shapePicker = document.getElementById('shapePicker');
+        const sizePicker = document.getElementById('sizePicker');
         const clearBtn = document.getElementById('clearBtn');
 
         let drawing = false;
+        let lastX = 0;
+        let lastY = 0;
 
-        canvas.addEventListener('mousedown', () => drawing = true);
-        canvas.addEventListener('mouseup', () => drawing = false);
-        canvas.addEventListener('mouseout', () => drawing = false);
+        function startDrawing(x, y) {
+            drawing = true;
+            lastX = x;
+            lastY = y;
+        }
 
-        canvas.addEventListener('mousemove', (e) => {
+        function drawLine(x, y) {
             if (!drawing) return;
+            ctx.strokeStyle = colorPicker.value;
+            ctx.lineWidth = sizePicker.value;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            lastX = x;
+            lastY = y;
+        }
 
+        function stopDrawing() {
+            drawing = false;
+        }
+
+        // الكمبيوتر
+        canvas.addEventListener('mousedown', e => {
             const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            const size = Math.random() * 50 + 20;
-            const color = colorPicker.value;
-            const shape = shapePicker.value;
-
-            ctx.fillStyle = color;
-
-            if (shape === 'circle') {
-                ctx.beginPath();
-                ctx.arc(x, y, size/2, 0, Math.PI * 2);
-                ctx.fill();
-            } else if (shape === 'square') {
-                ctx.fillRect(x - size/2, y - size/2, size, size);
-            } else if (shape === 'triangle') {
-                ctx.beginPath();
-                ctx.moveTo(x, y - size/2);
-                ctx.lineTo(x - size/2, y + size/2);
-                ctx.lineTo(x + size/2, y + size/2);
-                ctx.closePath();
-                ctx.fill();
-            }
+            startDrawing(e.clientX - rect.left, e.clientY - rect.top);
         });
+        canvas.addEventListener('mousemove', e => {
+            const rect = canvas.getBoundingClientRect();
+            drawLine(e.clientX - rect.left, e.clientY - rect.top);
+        });
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+
+        // الموبايل / اللمس
+        canvas.addEventListener('touchstart', e => {
+            const rect = canvas.getBoundingClientRect();
+            const touch = e.touches[0];
+            startDrawing(touch.clientX - rect.left, touch.clientY - rect.top);
+        });
+        canvas.addEventListener('touchmove', e => {
+            const rect = canvas.getBoundingClientRect();
+            const touch = e.touches[0];
+            drawLine(touch.clientX - rect.left, touch.clientY - rect.top);
+            e.preventDefault();
+        });
+        canvas.addEventListener('touchend', stopDrawing);
+        canvas.addEventListener('touchcancel', stopDrawing);
 
         clearBtn.addEventListener('click', () => ctx.clearRect(0, 0, canvas.width, canvas.height));
     </script>
