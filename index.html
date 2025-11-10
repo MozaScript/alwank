@@ -1,111 +1,179 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ألوانك - رسم حر</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f0f0f0;
-        }
-        #canvas {
-            border: 2px solid #333;
-            width: 90%;
-            max-width: 500px;
-            height: 400px;
-            background-color: #fff;
-            touch-action: none; /* يمنع الصفحة من التحرك أثناء الرسم */
-        }
-        .controls {
-            margin-top: 15px;
-        }
-        input[type="color"], input[type="range"], button {
-            margin: 5px;
-            padding: 5px 10px;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ألوانك - رسم حر مع زوم</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background-color: #f0f0f0;
+        overflow: hidden;
+    }
+    #canvasContainer {
+        border: 1px solid #333;
+        width: 95vw;
+        height: 80vh;
+        overflow: hidden;
+        position: relative;
+        touch-action: none;
+    }
+    #canvas {
+        background-color: #fff;
+        transform-origin: 0 0;
+        display: block;
+    }
+    .controls {
+        margin: 5px;
+        width: 95%;
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+    }
+    input[type="color"], input[type="range"], button {
+        margin: 5px;
+        padding: 5px 10px;
+    }
+</style>
 </head>
 <body>
 
-    <h1>ألوانك - رسم حر</h1>
+<h1>ألوانك - رسم حر مع زوم</h1>
+<div id="canvasContainer">
     <canvas id="canvas"></canvas>
+</div>
 
-    <div class="controls">
-        <label>اختر اللون: <input type="color" id="colorPicker" value="#ff0000"></label>
-        <label>حجم الفرشاة: <input type="range" id="sizePicker" min="1" max="30" value="5"></label>
-        <button id="clearBtn">امسح كل شيء</button>
-    </div>
+<div class="controls">
+    <label>اختر اللون: <input type="color" id="colorPicker" value="#ff0000"></label>
+    <label>حجم الفرشاة: <input type="range" id="sizePicker" min="1" max="50" value="5"></label>
+    <button id="clearBtn">امسح كل شيء</button>
+</div>
 
-    <script>
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        const colorPicker = document.getElementById('colorPicker');
-        const sizePicker = document.getElementById('sizePicker');
-        const clearBtn = document.getElementById('clearBtn');
+<script>
+const container = document.getElementById('canvasContainer');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const colorPicker = document.getElementById('colorPicker');
+const sizePicker = document.getElementById('sizePicker');
+const clearBtn = document.getElementById('clearBtn');
 
-        let drawing = false;
-        let lastX = 0;
-        let lastY = 0;
+// إعداد canvas كبير للرسم
+const canvasWidth = 2000;
+const canvasHeight = 2000;
+canvas.width = canvasWidth;
+canvas.height = canvasHeight;
 
-        function startDrawing(x, y) {
-            drawing = true;
-            lastX = x;
-            lastY = y;
+// التحكم في الزوم والتحريك
+let scale = 1;
+let offsetX = 0;
+let offsetY = 0;
+let startPan = null;
+
+// رسم حر
+let drawing = false;
+let lastX = 0;
+let lastY = 0;
+
+function startDrawing(x, y) {
+    drawing = true;
+    lastX = x;
+    lastY = y;
+}
+
+function drawLine(x, y) {
+    if (!drawing) return;
+    ctx.strokeStyle = colorPicker.value;
+    ctx.lineWidth = sizePicker.value / scale; // تصحيح حسب الزوم
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(lastX, lastY);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    lastX = x;
+    lastY = y;
+}
+
+function stopDrawing() {
+    drawing = false;
+}
+
+// تحديث العرض
+function render() {
+    canvas.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
+    requestAnimationFrame(render);
+}
+render();
+
+// التعامل مع الفأرة للرسم والزوم/بان
+canvas.addEventListener('mousedown', e => {
+    if (e.button === 0) {
+        const rect = canvas.getBoundingClientRect();
+        startDrawing((e.clientX - rect.left)/scale, (e.clientY - rect.top)/scale);
+    } else if (e.button === 1) {
+        startPan = {x: e.clientX - offsetX, y: e.clientY - offsetY};
+    }
+});
+canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    if (drawing) {
+        drawLine((e.clientX - rect.left)/scale, (e.clientY - rect.top)/scale);
+    } else if (startPan) {
+        offsetX = e.clientX - startPan.x;
+        offsetY = e.clientY - startPan.y;
+    }
+});
+canvas.addEventListener('mouseup', () => { stopDrawing(); startPan=null; });
+canvas.addEventListener('mouseout', () => { stopDrawing(); startPan=null; });
+canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const zoom = e.deltaY < 0 ? 1.1 : 0.9;
+    scale *= zoom;
+});
+
+// اللمس للموبايل
+let lastTouchDistance = null;
+
+canvas.addEventListener('touchstart', e => {
+    if (e.touches.length === 1) {
+        const rect = canvas.getBoundingClientRect();
+        const touch = e.touches[0];
+        startDrawing((touch.clientX - rect.left)/scale, (touch.clientY - rect.top)/scale);
+    } else if (e.touches.length === 2) {
+        lastTouchDistance = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+        );
+    }
+}, {passive:false});
+
+canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    if (e.touches.length === 1 && drawing) {
+        const touch = e.touches[0];
+        drawLine((touch.clientX - rect.left)/scale, (touch.clientY - rect.top)/scale);
+    } else if (e.touches.length === 2) {
+        const newDist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+        );
+        if (lastTouchDistance) {
+            const zoom = newDist / lastTouchDistance;
+            scale *= zoom;
         }
+        lastTouchDistance = newDist;
+    }
+}, {passive:false});
 
-        function drawLine(x, y) {
-            if (!drawing) return;
-            ctx.strokeStyle = colorPicker.value;
-            ctx.lineWidth = sizePicker.value;
-            ctx.lineCap = 'round';
-            ctx.beginPath();
-            ctx.moveTo(lastX, lastY);
-            ctx.lineTo(x, y);
-            ctx.stroke();
-            lastX = x;
-            lastY = y;
-        }
+canvas.addEventListener('touchend', () => { stopDrawing(); lastTouchDistance = null; });
+canvas.addEventListener('touchcancel', () => { stopDrawing(); lastTouchDistance = null; });
 
-        function stopDrawing() {
-            drawing = false;
-        }
-
-        // الكمبيوتر
-        canvas.addEventListener('mousedown', e => {
-            const rect = canvas.getBoundingClientRect();
-            startDrawing(e.clientX - rect.left, e.clientY - rect.top);
-        });
-        canvas.addEventListener('mousemove', e => {
-            const rect = canvas.getBoundingClientRect();
-            drawLine(e.clientX - rect.left, e.clientY - rect.top);
-        });
-        canvas.addEventListener('mouseup', stopDrawing);
-        canvas.addEventListener('mouseout', stopDrawing);
-
-        // الموبايل / اللمس
-        canvas.addEventListener('touchstart', e => {
-            const rect = canvas.getBoundingClientRect();
-            const touch = e.touches[0];
-            startDrawing(touch.clientX - rect.left, touch.clientY - rect.top);
-        });
-        canvas.addEventListener('touchmove', e => {
-            const rect = canvas.getBoundingClientRect();
-            const touch = e.touches[0];
-            drawLine(touch.clientX - rect.left, touch.clientY - rect.top);
-            e.preventDefault();
-        });
-        canvas.addEventListener('touchend', stopDrawing);
-        canvas.addEventListener('touchcancel', stopDrawing);
-
-        clearBtn.addEventListener('click', () => ctx.clearRect(0, 0, canvas.width, canvas.height));
-    </script>
+clearBtn.addEventListener('click', () => ctx.clearRect(0,0,canvas.width,canvas.height));
+</script>
 
 </body>
 </html>
