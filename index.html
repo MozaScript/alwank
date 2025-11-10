@@ -74,7 +74,6 @@ h1 {
 <script>
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
-const container = document.getElementById('canvasContainer');
 
 const colorPicker = document.getElementById('colorPicker');
 const sizePicker = document.getElementById('sizePicker');
@@ -87,48 +86,51 @@ const saveBtn = document.getElementById('saveBtn');
 canvas.width = 2000;
 canvas.height = 2000;
 
-// عناصر الرسم
 let elements = [];
 let redoElements = [];
 
 let drawing = false;
 let startX = 0, startY = 0;
+let tempElement = null;
 
 function drawAll() {
     ctx.clearRect(0,0,canvas.width,canvas.height);
-    elements.forEach(el => {
-        ctx.lineWidth = el.size;
-        ctx.strokeStyle = el.color;
-        ctx.fillStyle = el.color;
-        if(el.type === 'brush' || el.type === 'eraser') {
-            ctx.beginPath();
-            ctx.lineCap = 'round';
-            for(let i=0;i<el.points.length-1;i++){
-                ctx.moveTo(el.points[i].x, el.points[i].y);
-                ctx.lineTo(el.points[i+1].x, el.points[i+1].y);
-            }
-            ctx.stroke();
-        } else if(el.type === 'line'){
-            ctx.beginPath();
-            ctx.moveTo(el.x1, el.y1);
-            ctx.lineTo(el.x2, el.y2);
-            ctx.stroke();
-        } else if(el.type === 'rect'){
-            ctx.strokeRect(el.x1, el.y1, el.x2-el.x1, el.y2-el.y1);
-        } else if(el.type === 'circle'){
-            ctx.beginPath();
-            const r = Math.sqrt((el.x2-el.x1)**2 + (el.y2-el.y1)**2);
-            ctx.arc(el.x1, el.y1, r, 0, Math.PI*2);
-            ctx.stroke();
-        } else if(el.type === 'triangle'){
-            ctx.beginPath();
-            ctx.moveTo(el.x1, el.y1);
-            ctx.lineTo(el.x2, el.y2);
-            ctx.lineTo(el.x1-(el.x2-el.x1), el.y2);
-            ctx.closePath();
-            ctx.stroke();
+    elements.forEach(el => drawElement(el));
+    if(tempElement) drawElement(tempElement);
+}
+
+function drawElement(el){
+    ctx.lineWidth = el.size;
+    ctx.strokeStyle = el.color;
+    ctx.fillStyle = el.color;
+    if(el.type === 'brush' || el.type === 'eraser') {
+        ctx.beginPath();
+        ctx.lineCap = 'round';
+        for(let i=0;i<el.points.length-1;i++){
+            ctx.moveTo(el.points[i].x, el.points[i].y);
+            ctx.lineTo(el.points[i+1].x, el.points[i+1].y);
         }
-    });
+        ctx.stroke();
+    } else if(el.type === 'line'){
+        ctx.beginPath();
+        ctx.moveTo(el.x1, el.y1);
+        ctx.lineTo(el.x2, el.y2);
+        ctx.stroke();
+    } else if(el.type === 'rect'){
+        ctx.strokeRect(el.x1, el.y1, el.x2-el.x1, el.y2-el.y1);
+    } else if(el.type === 'circle'){
+        ctx.beginPath();
+        const r = Math.sqrt((el.x2-el.x1)**2 + (el.y2-el.y1)**2);
+        ctx.arc(el.x1, el.y1, r, 0, Math.PI*2);
+        ctx.stroke();
+    } else if(el.type === 'triangle'){
+        ctx.beginPath();
+        ctx.moveTo(el.x1, el.y1);
+        ctx.lineTo(el.x2, el.y2);
+        ctx.lineTo(el.x1-(el.x2-el.x1), el.y2);
+        ctx.closePath();
+        ctx.stroke();
+    }
 }
 
 function getCoords(e){
@@ -145,8 +147,11 @@ function startDrawing(e){
     [startX,startY] = getCoords(e);
     drawing = true;
     if(toolPicker.value==='brush' || toolPicker.value==='eraser'){
-        elements.push({type:toolPicker.value, color:toolPicker.value==='eraser'?'#fff':colorPicker.value, size:sizePicker.value, points:[{x:startX,y:startY}]});
-        redoElements = [];
+        const el = {type:toolPicker.value, color:toolPicker.value==='eraser'?'#fff':colorPicker.value, size:sizePicker.value, points:[{x:startX,y:startY}]};
+        elements.push(el);
+        redoElements=[];
+    } else {
+        tempElement = {type:toolPicker.value,color:colorPicker.value,size:sizePicker.value,x1:startX,y1:startY,x2:startX,y2:startY};
     }
 }
 
@@ -158,40 +163,17 @@ function draw(e){
         current.points.push({x,y});
         drawAll();
     } else {
+        tempElement.x2 = x;
+        tempElement.y2 = y;
         drawAll();
-        const temp = {type:toolPicker.value,color:colorPicker.value,size:sizePicker.value,x1:startX,y1:startY,x2:x,y2:y};
-        drawAll();
-        ctx.lineWidth = temp.size;
-        ctx.strokeStyle = temp.color;
-        ctx.fillStyle = temp.color;
-        if(temp.type==='line'){
-            ctx.beginPath();
-            ctx.moveTo(temp.x1,temp.y1);
-            ctx.lineTo(temp.x2,temp.y2);
-            ctx.stroke();
-        } else if(temp.type==='rect'){
-            ctx.strokeRect(temp.x1,temp.y1,temp.x2-temp.x1,temp.y2-temp.y1);
-        } else if(temp.type==='circle'){
-            ctx.beginPath();
-            const r=Math.sqrt((temp.x2-temp.x1)**2+(temp.y2-temp.y1)**2);
-            ctx.arc(temp.x1,temp.y1,r,0,Math.PI*2);
-            ctx.stroke();
-        } else if(temp.type==='triangle'){
-            ctx.beginPath();
-            ctx.moveTo(temp.x1,temp.y1);
-            ctx.lineTo(temp.x2,temp.y2);
-            ctx.lineTo(temp.x1-(temp.x2-temp.x1),temp.y2);
-            ctx.closePath();
-            ctx.stroke();
-        }
     }
 }
 
 function endDrawing(e){
-    if(drawing && !['brush','eraser'].includes(toolPicker.value)){
-        const [x,y] = getCoords(e);
-        elements.push({type:toolPicker.value,color:colorPicker.value,size:sizePicker.value,x1:startX,y1:startY,x2:x,y2:y});
-        redoElements = [];
+    if(drawing && tempElement){
+        elements.push(tempElement);
+        tempElement = null;
+        redoElements=[];
         drawAll();
     }
     drawing = false;
