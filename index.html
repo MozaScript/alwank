@@ -5,45 +5,44 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ألوانك</title>
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Pacifico&display=swap');
-    body {
-        font-family: Arial, sans-serif;
-        margin: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        background-color: #f0f0f0;
-    }
-    h1 {
-        font-family: 'Pacifico', cursive;
-        margin: 10px 0;
-        font-size: 3em;
-        color: #ff6347;
-    }
-    #canvasContainer {
-        border: 1px solid #333;
-        width: 95vw;
-        height: 80vh;
-        overflow: hidden;
-        position: relative;
-        touch-action: none;
-        background-color: #fff;
-    }
-    #canvas {
-        display: block;
-        transform-origin: 0 0;
-    }
-    .controls {
-        margin: 5px;
-        width: 95%;
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: space-between;
-    }
-    .controls label, .controls button {
-        margin: 5px;
-        padding: 5px 10px;
-    }
+@import url('https://fonts.googleapis.com/css2?family=Pacifico&display=swap');
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: #f0f0f0;
+}
+h1 {
+    font-family: 'Pacifico', cursive;
+    margin: 10px 0;
+    font-size: 3em;
+    color: #ff6347;
+}
+#canvasContainer {
+    border: 1px solid #333;
+    width: 95vw;
+    height: 80vh;
+    overflow: hidden;
+    position: relative;
+    touch-action: none;
+    background-color: #fff;
+}
+#canvas {
+    display: block;
+}
+.controls {
+    margin: 5px;
+    width: 95%;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+}
+.controls label, .controls button {
+    margin: 5px;
+    padding: 5px 10px;
+}
 </style>
 </head>
 <body>
@@ -75,16 +74,16 @@
 </div>
 
 <script>
-const container = document.getElementById('canvasContainer');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
+const container = document.getElementById('canvasContainer');
 
 const colorPicker = document.getElementById('colorPicker');
 const sizePicker = document.getElementById('sizePicker');
 const toolPicker = document.getElementById('toolPicker');
-const clearBtn = document.getElementById('clearBtn');
 const undoBtn = document.getElementById('undoBtn');
 const redoBtn = document.getElementById('redoBtn');
+const clearBtn = document.getElementById('clearBtn');
 const saveBtn = document.getElementById('saveBtn');
 const zoomIn = document.getElementById('zoomIn');
 const zoomOut = document.getElementById('zoomOut');
@@ -93,89 +92,62 @@ canvas.width = 2000;
 canvas.height = 2000;
 
 let scale = 1;
+let offsetX = 0;
+let offsetY = 0;
+
+// عناصر الرسم
+let elements = [];
+let redoElements = [];
+
 let drawing = false;
-let startX = 0;
-let startY = 0;
-let lastX = 0;
-let lastY = 0;
+let startX = 0, startY = 0;
 
-// تخزين الرسم للـ Undo / Redo
-let history = [];
-let historyStep = -1;
-
-function saveState() {
-    history = history.slice(0, historyStep + 1);
-    history.push(canvas.toDataURL());
-    historyStep++;
+function drawAll() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    elements.forEach(el => {
+        ctx.lineWidth = el.size;
+        ctx.strokeStyle = el.color;
+        ctx.fillStyle = el.color;
+        if(el.type === 'brush' || el.type === 'eraser') {
+            ctx.beginPath();
+            for(let i=0;i<el.points.length-1;i++){
+                ctx.moveTo(el.points[i].x, el.points[i].y);
+                ctx.lineTo(el.points[i+1].x, el.points[i+1].y);
+            }
+            ctx.stroke();
+        } else if(el.type === 'line'){
+            ctx.beginPath();
+            ctx.moveTo(el.x1, el.y1);
+            ctx.lineTo(el.x2, el.y2);
+            ctx.stroke();
+        } else if(el.type === 'rect'){
+            ctx.strokeRect(el.x1, el.y1, el.x2-el.x1, el.y2-el.y1);
+        } else if(el.type === 'circle'){
+            ctx.beginPath();
+            const r = Math.sqrt((el.x2-el.x1)**2 + (el.y2-el.y1)**2);
+            ctx.arc(el.x1, el.y1, r, 0, Math.PI*2);
+            ctx.stroke();
+        } else if(el.type === 'triangle'){
+            ctx.beginPath();
+            ctx.moveTo(el.x1, el.y1);
+            ctx.lineTo(el.x2, el.y2);
+            ctx.lineTo(el.x1-(el.x2-el.x1), el.y2);
+            ctx.closePath();
+            ctx.stroke();
+        }
+    });
 }
 
-function undo() {
-    if (historyStep <= 0) return;
-    historyStep--;
-    let img = new Image();
-    img.src = history[historyStep];
-    img.onload = () => ctx.drawImage(img,0,0);
-}
-
-function redo() {
-    if (historyStep >= history.length -1) return;
-    historyStep++;
-    let img = new Image();
-    img.src = history[historyStep];
-    img.onload = () => ctx.drawImage(img,0,0);
-}
-
-// الرسم الحر والممحاة
-function drawBrush(x, y) {
-    ctx.strokeStyle = colorPicker.value;
-    ctx.lineWidth = sizePicker.value / scale;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(lastX, lastY);
-    ctx.lineTo(x, y);
-    ctx.stroke();
-    lastX = x;
-    lastY = y;
-}
-
-// أدوات الأشكال الهندسية
-function drawShape(x, y, tool) {
-    ctx.strokeStyle = colorPicker.value;
-    ctx.lineWidth = sizePicker.value / scale;
-    const w = x - startX;
-    const h = y - startY;
-    if(tool === 'line') {
-        ctx.beginPath();
-        ctx.moveTo(startX, startY);
-        ctx.lineTo(x, y);
-        ctx.stroke();
-    } else if(tool === 'rect') {
-        ctx.strokeRect(startX, startY, w, h);
-    } else if(tool === 'circle') {
-        ctx.beginPath();
-        const radius = Math.sqrt(w*w + h*h);
-        ctx.arc(startX, startY, radius, 0, Math.PI*2);
-        ctx.stroke();
-    } else if(tool === 'triangle') {
-        ctx.beginPath();
-        ctx.moveTo(startX, startY);
-        ctx.lineTo(startX + w, startY + h);
-        ctx.lineTo(startX - w, startY + h);
-        ctx.closePath();
-        ctx.stroke();
-    }
-}
-
-// التحكم بالزوم
+// التعامل مع الزوم
 function render() {
     canvas.style.transform = `scale(${scale})`;
     requestAnimationFrame(render);
 }
 render();
 
-function getCoords(e) {
+function getCoords(e){
     const rect = canvas.getBoundingClientRect();
-    if(e.touches) {
+    if(e.touches){
         const t = e.touches[0];
         return [(t.clientX - rect.left)/scale, (t.clientY - rect.top)/scale];
     } else {
@@ -183,56 +155,86 @@ function getCoords(e) {
     }
 }
 
-// أحداث الفأرة
-canvas.addEventListener('mousedown', e => {
+function startDrawing(e){
     [startX,startY] = getCoords(e);
-    lastX = startX;
-    lastY = startY;
     drawing = true;
-});
-canvas.addEventListener('mousemove', e => {
-    if(!drawing) return;
-    const [x,y] = getCoords(e);
-    if(toolPicker.value === 'brush') drawBrush(x,y);
-    else if(toolPicker.value === 'eraser') {
-        ctx.strokeStyle = '#fff';
-        drawBrush(x,y);
+    if(toolPicker.value==='brush' || toolPicker.value==='eraser'){
+        elements.push({type:toolPicker.value, color:toolPicker.value==='eraser'?'#fff':colorPicker.value, size:sizePicker.value/scale, points:[{x:startX,y:startY}]});
+        redoElements = [];
     }
-});
-canvas.addEventListener('mouseup', e => {
+}
+
+function draw(e){
     if(!drawing) return;
     const [x,y] = getCoords(e);
-    if(['line','rect','circle','triangle'].includes(toolPicker.value))
-        drawShape(x,y,toolPicker.value);
+    if(toolPicker.value==='brush' || toolPicker.value==='eraser'){
+        const current = elements[elements.length-1];
+        current.points.push({x,y});
+        drawAll();
+    } else {
+        drawAll();
+        const temp = {type:toolPicker.value,color:colorPicker.value,size:sizePicker.value/scale,x1:startX,y1:startY,x2:x,y2:y};
+        elements.push(temp);
+        drawAll();
+        elements.pop();
+    }
+}
+
+function endDrawing(e){
+    if(drawing && !['brush','eraser'].includes(toolPicker.value)){
+        const [x,y] = getCoords(e);
+        elements.push({type:toolPicker.value,color:colorPicker.value,size:sizePicker.value/scale,x1:startX,y1:startY,x2:x,y2:y});
+        redoElements = [];
+        drawAll();
+    }
     drawing = false;
-    saveState();
-});
-canvas.addEventListener('mouseout', ()=> drawing=false);
+}
 
-// اللمس للموبايل
-canvas.addEventListener('touchstart', e => { [startX,startY] = getCoords(e); lastX=startX; lastY=startY; drawing=true; }, {passive:false});
-canvas.addEventListener('touchmove', e => { e.preventDefault(); if(!drawing) return; const [x,y]=getCoords(e); if(toolPicker.value==='brush') drawBrush(x,y); else if(toolPicker.value==='eraser'){ ctx.strokeStyle='#fff'; drawBrush(x,y); } }, {passive:false});
-canvas.addEventListener('touchend', ()=> { drawing=false; saveState(); });
+// الفأرة
+canvas.addEventListener('mousedown', startDrawing);
+canvas.addEventListener('mousemove', draw);
+canvas.addEventListener('mouseup', endDrawing);
+canvas.addEventListener('mouseout', endDrawing);
 
-// المسح
-clearBtn.addEventListener('click', ()=>{ ctx.clearRect(0,0,canvas.width,canvas.height); saveState(); });
+// اللمس
+canvas.addEventListener('touchstart', startDrawing,{passive:false});
+canvas.addEventListener('touchmove', draw,{passive:false});
+canvas.addEventListener('touchend', endDrawing);
 
 // Undo / Redo
-undoBtn.addEventListener('click', undo);
-redoBtn.addEventListener('click', redo);
+undoBtn.addEventListener('click',()=>{
+    if(elements.length>0){
+        redoElements.push(elements.pop());
+        drawAll();
+    }
+});
+redoBtn.addEventListener('click',()=>{
+    if(redoElements.length>0){
+        elements.push(redoElements.pop());
+        drawAll();
+    }
+});
+
+// مسح كل شيء
+clearBtn.addEventListener('click',()=>{
+    elements=[];
+    redoElements=[];
+    drawAll();
+});
 
 // حفظ PNG
-saveBtn.addEventListener('click', ()=>{ 
-    const link = document.createElement('a');
-    link.download = 'myDrawing.png';
-    link.href = canvas.toDataURL();
+saveBtn.addEventListener('click',()=>{
+    const link=document.createElement('a');
+    link.download='myDrawing.png';
+    link.href=canvas.toDataURL();
     link.click();
 });
 
 // الزوم
-zoomIn.addEventListener('click', ()=> scale*=1.2);
-zoomOut.addEventListener('click', ()=> scale/=1.2);
+zoomIn.addEventListener('click',()=> scale*=1.2);
+zoomOut.addEventListener('click',()=> scale/=1.2);
 
 </script>
+
 </body>
 </html>
