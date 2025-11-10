@@ -43,18 +43,13 @@ h1 {
     margin: 5px;
     padding: 5px 10px;
 }
-#colorPickerContainer {
-    width: 120px;
-    height: 120px;
-    margin: 5px;
-}
 </style>
 </head>
 <body>
 
 <h1>ألوانك</h1>
 <div class="controls">
-    <div id="colorPickerContainer"></div>
+    <label>اللون: <input type="color" id="colorPicker" value="#ff0000"></label>
     <label>حجم القلم: <input type="range" id="sizePicker" min="1" max="50" value="5"></label>
     <label>الأداة:
         <select id="toolPicker">
@@ -76,13 +71,11 @@ h1 {
     <canvas id="canvas"></canvas>
 </div>
 
-<!-- إضافة iro.js من CDN -->
-<script src="https://cdn.jsdelivr.net/npm/iro@5.5.2/dist/iro.min.js"></script>
-
 <script>
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
+const colorPicker = document.getElementById('colorPicker');
 const sizePicker = document.getElementById('sizePicker');
 const toolPicker = document.getElementById('toolPicker');
 const undoBtn = document.getElementById('undoBtn');
@@ -90,21 +83,9 @@ const redoBtn = document.getElementById('redoBtn');
 const clearBtn = document.getElementById('clearBtn');
 const saveBtn = document.getElementById('saveBtn');
 
-canvas.width = 2000;
-canvas.height = 2000;
+canvas.width = window.innerWidth * 0.95;
+canvas.height = window.innerHeight * 0.7;
 
-// إنشاء لوحة الألوان باستخدام iro.js
-const colorPicker = new iro.ColorPicker("#colorPickerContainer", {
-    width: 120,
-    color: "#ff0000"
-});
-
-let currentColor = colorPicker.color.hexString;
-colorPicker.on("color:change", function(color) {
-    currentColor = color.hexString;
-});
-
-// عناصر الرسم
 let elements = [];
 let redoElements = [];
 
@@ -115,7 +96,7 @@ let tempElement = null;
 function drawAll() {
     ctx.clearRect(0,0,canvas.width,canvas.height);
     elements.forEach(el => drawElement(el));
-    if (tempElement) drawElement(tempElement);
+    if(tempElement) drawElement(tempElement);
 }
 
 function drawElement(el){
@@ -167,11 +148,11 @@ function startDrawing(e){
     drawing = true;
     const size = sizePicker.value;
     if(toolPicker.value==='brush' || toolPicker.value==='eraser'){
-        const el = {type:toolPicker.value, color:toolPicker.value==='eraser'?'#fff':currentColor, size:size, points:[{x:startX,y:startY}]};
+        const el = {type:toolPicker.value, color:toolPicker.value==='eraser'?'#fff':colorPicker.value, size:size, points:[{x:startX,y:startY}]};
         elements.push(el);
         redoElements = [];
     } else {
-        tempElement = {type:toolPicker.value, color: currentColor, size:size, x1:startX, y1:startY, x2:startX, y2:startY};
+        tempElement = {type:toolPicker.value, color: colorPicker.value, size:size, x1:startX, y1:startY, x2:startX, y2:startY};
     }
     drawAll();
 }
@@ -238,7 +219,6 @@ saveBtn.addEventListener('click',()=>{
     link.href=canvas.toDataURL();
     link.click();
 });
-
 </script>
 </body>
 </html>
