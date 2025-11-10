@@ -101,7 +101,7 @@ function drawAll() {
 
 function drawElement(el){
     ctx.lineWidth = el.size;
-    ctx.strokeStyle = el.color;
+    ctx.strokeStyle = el.color;  // استخدام اللون مباشرة
     ctx.fillStyle = el.color;
     if(el.type === 'brush' || el.type === 'eraser') {
         ctx.beginPath();
@@ -153,6 +153,7 @@ function startDrawing(e){
     } else {
         tempElement = {type:toolPicker.value,color:colorPicker.value,size:sizePicker.value,x1:startX,y1:startY,x2:startX,y2:startY};
     }
+    drawAll();
 }
 
 function draw(e){
@@ -161,12 +162,11 @@ function draw(e){
     if(toolPicker.value==='brush' || toolPicker.value==='eraser'){
         const current = elements[elements.length-1];
         current.points.push({x,y});
-        drawAll();
     } else {
         tempElement.x2 = x;
         tempElement.y2 = y;
-        drawAll();
     }
+    drawAll();
 }
 
 function endDrawing(e){
